@@ -12,7 +12,7 @@ let config = {
         start : "2018-06-11 00:00",
         end : "2018-06-17 23:59"
     },
-    outputDir : "output/Jun 11 - Jun 17"
+    outputDir : "output/Jun 11 - Jun 17/"
 };
 
 const mkdir = async (name) => {
@@ -235,6 +235,38 @@ const defectsFoundPerQA = (easierTests, period) => {
     }
     return result.join('\n');
 };
+const cancelledDefectsPerQA = (easierTests, period) => {
+    let result = [];
+    let obj = {};
+    for(let i = 0; i < easierTests.length; i ++) {
+        let easierTest = easierTests[i];
+        let qa =  easierTest.qa;
+        if(!obj[qa]){
+            obj[qa] = {
+                defectsFound : 0,
+                cancelledDefects : 0
+            }
+        }
+        obj[qa].defectsFound += easierTest.defects.length;
+        for(let j = 0; j < easierTest.defects.length; j ++){
+            let easierDefect = easierTest.defects[j];
+            if(easierDefect.status === "Cancelled"){
+                obj[qa].cancelledDefects ++;
+            }
+        }
+    }
+    let keys = Object.keys(obj);
+    result.push("Period;QA name;Defects found;Cancelled defects");
+    for(let i = 0; i < keys.length; i++){
+        let lineObj = {};
+        lineObj.period = period;
+        lineObj.qa = keys[i];
+        lineObj.defectsFound = obj[keys[i]].defectsFound;
+        lineObj.cancelledDefects = obj[keys[i]].cancelledDefects;
+        result.push(format("{period};{qa};{defectsFound};{cancelledDefects};", lineObj));
+    }
+    return result.join('\n');
+};
 
 const qualityRankPerProject = (issues, period) => {
     let result = [];
@@ -296,19 +328,17 @@ const run = async () => {
     await jiraLib.init(config);
     await mkdir(config.outputDir);
     let period = config.dates.start + " - " + config.dates.end;
-    let outputFolder = "output/Jun 11 - Jun 17/";
-    let testedScreens = await jiraLib.loadEasierStoriesMovedFromQAtoValidation(config);
-    await save(outputFolder + "project-quality-rank.csv", qualityRankPerProject(testedScreens, period));
-    await save(outputFolder + "developers-quality-rank.csv", qualityRankPerDeveloper(testedScreens, period));
     let easierTests = await jiraLib.loadEasierTests(config);
-    await save(outputFolder + "raw-data.csv", rawData(easierTests, period));
-    // let defectsPerType = defectsPerType(easierTests);
-    // save("defects-per-type.csv", rawData);
-    await save(outputFolder + "defects-per-project.csv", defectsPerProject(easierTests, period));
-    await save(outputFolder + "defects-per-developer.csv", defectsPerDeveloper(easierTests, period));
-    await save(outputFolder + "pass-rate-per-project.csv", passRatePerProject(easierTests, period));
-    await save(outputFolder + "pass-rate-per-developer.csv", passRatePerDeveloper(easierTests, period));
-    await save(outputFolder + "defects-found-per-qa.csv", defectsFoundPerQA(easierTests, period));
+    let testedScreens = await jiraLib.loadEasierStoriesMovedFromQAtoValidation(config);
+    await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProject(testedScreens, period));
+    await save(config.outputDir + "developers-quality-rank.csv", qualityRankPerDeveloper(testedScreens, period));
+    await save(config.outputDir + "raw-data.csv", rawData(easierTests, period));
+    await save(config.outputDir + "defects-per-project.csv", defectsPerProject(easierTests, period));
+    await save(config.outputDir + "defects-per-developer.csv", defectsPerDeveloper(easierTests, period));
+    await save(config.outputDir + "pass-rate-per-project.csv", passRatePerProject(easierTests, period));
+    await save(config.outputDir + "pass-rate-per-developer.csv", passRatePerDeveloper(easierTests, period));
+    await save(config.outputDir + "defects-found-per-qa.csv", defectsFoundPerQA(easierTests, period));
+    await save(config.outputDir + "cancelled-defects-per-qa.csv", cancelledDefectsPerQA(easierTests, period));
 };
 
 run();
