@@ -292,7 +292,7 @@ const qualityRankPerProject = (issues, period) => {
         lineObj.period = period;
         lineObj.project = keys[i];
         lineObj.rate = obj[keys[i]].rate;
-        result.push(format("{period};{project};{rate}", lineObj));
+        result.push(format("{period};{project};{rate};", lineObj));
     }
     return result.join('\n');
 };
@@ -320,7 +320,7 @@ const qualityRankPerDeveloper = (issues, period) => {
         lineObj.period = period;
         lineObj.developer = keys[i];
         lineObj.rate = obj[keys[i]].rate;
-        result.push(format("{period};{developer};{rate}", lineObj));
+        result.push(format("{period};{developer};{rate};", lineObj));
     }
     return result.join('\n');
 };
@@ -330,15 +330,36 @@ const run = async () => {
     let period = config.dates.start + " - " + config.dates.end;
     let easierTests = await jiraLib.loadEasierTests(config);
     let testedScreens = await jiraLib.loadEasierStoriesMovedFromQAtoValidation(config);
-    await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProject(testedScreens, period));
-    await save(config.outputDir + "developers-quality-rank.csv", qualityRankPerDeveloper(testedScreens, period));
-    await save(config.outputDir + "raw-data.csv", rawData(easierTests, period));
-    await save(config.outputDir + "defects-per-project.csv", defectsPerProject(easierTests, period));
-    await save(config.outputDir + "defects-per-developer.csv", defectsPerDeveloper(easierTests, period));
-    await save(config.outputDir + "pass-rate-per-project.csv", passRatePerProject(easierTests, period));
-    await save(config.outputDir + "pass-rate-per-developer.csv", passRatePerDeveloper(easierTests, period));
-    await save(config.outputDir + "defects-found-per-qa.csv", defectsFoundPerQA(easierTests, period));
-    await save(config.outputDir + "cancelled-defects-per-qa.csv", cancelledDefectsPerQA(easierTests, period));
+    let qualityRankPerProjectCSV = qualityRankPerProject(testedScreens, period);
+    let qualityRankPerDeveloperCSV = qualityRankPerDeveloper(testedScreens, period);
+    let rawDataCSV = rawData(easierTests, period);
+    let defectsPerProjectCSV = defectsPerProject(easierTests, period);
+    let defectsPerDeveloperCSV = defectsPerDeveloper(easierTests, period);
+    let passRatePerProjectCSV = passRatePerProject(easierTests, period);
+    let passRatePerDeveloperCSV = passRatePerDeveloper(easierTests, period);
+    let defectsFoundPerQACSV = defectsFoundPerQA(easierTests, period);
+    let cancelledDefectsPerQACSV = cancelledDefectsPerQA(easierTests, period);
+
+    await save(config.outputDir + "raw-data.csv", rawDataCSV);
+    await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProjectCSV);
+    await save(config.outputDir + "developers-quality-rank.csv", qualityRankPerDeveloperCSV);
+    await save(config.outputDir + "defects-per-project.csv", defectsPerProjectCSV);
+    await save(config.outputDir + "defects-per-developer.csv", defectsPerDeveloperCSV);
+    await save(config.outputDir + "pass-rate-per-project.csv", passRatePerProjectCSV);
+    await save(config.outputDir + "pass-rate-per-developer.csv", passRatePerDeveloperCSV);
+    await save(config.outputDir + "defects-found-per-qa.csv", defectsFoundPerQACSV);
+    await save(config.outputDir + "cancelled-defects-per-qa.csv", cancelledDefectsPerQACSV);
+
+    let generalCSV = rawDataCSV + "\n"
+        + qualityRankPerProjectCSV + "\n"
+        + qualityRankPerDeveloperCSV + "\n"
+        + defectsPerProjectCSV + "\n"
+        + defectsPerDeveloperCSV + "\n"
+        + passRatePerProjectCSV + "\n"
+        + passRatePerDeveloperCSV + "\n"
+        + defectsFoundPerQACSV + "\n"
+        + cancelledDefectsPerQACSV;
+    await save(config.outputDir + "general-report.csv", generalCSV);
 };
 
 run();
