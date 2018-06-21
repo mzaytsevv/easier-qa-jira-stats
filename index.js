@@ -9,10 +9,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-06-11 00:00",
-        end : "2018-06-17 23:59"
+        start : "2018-06-18 00:00",
+        end : "2018-06-24 23:59"
     },
-    outputDir : "output/Jun 11 - Jun 17/"
+    outputDir : "output/Jun 18 - Jun 24/"
 };
 
 const mkdir = async (name) => {
@@ -324,6 +324,24 @@ const qualityRankPerDeveloper = (issues, period) => {
     }
     return result.join('\n');
 };
+
+const executionTimeByTest = (expandedTests) => {
+    let result = [];
+    result.push("Test;Execution time (min);");
+    for(let i = 0; i < expandedTests.length; i ++ ) {
+        let test = expandedTests[i];
+        let startDate = Date.parse(test.acceptedDateTime);
+        let endDate = Date.parse(test.closedDateTime);
+        let executionTime = Math.floor((endDate - startDate) / 60000);
+        let obj = {
+            key : makeLink(test.key),
+            time : executionTime
+        };
+        result.push(format("{key};{time};", obj));
+    }
+    return result.join('\n');
+};
+
 const run = async () => {
     await jiraLib.init(config);
     await mkdir(config.outputDir);
@@ -339,6 +357,15 @@ const run = async () => {
     let passRatePerDeveloperCSV = passRatePerDeveloper(easierTests, period);
     let defectsFoundPerQACSV = defectsFoundPerQA(easierTests, period);
     let cancelledDefectsPerQACSV = cancelledDefectsPerQA(easierTests, period);
+
+    // Warning: slow
+    let ids = [];
+    for(let i = 0; i < easierTests.length; i++){
+        ids.push(easierTests[i].id);
+    }
+    let expandedIssues = await jiraLib.loadIssues(ids);
+    let executionTimeByTestCSV = executionTimeByTest(expandedIssues);
+    await save(config.outputDir + "execution-time-by-test.csv", executionTimeByTestCSV);
 
     await save(config.outputDir + "raw-data.csv", rawDataCSV);
     await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProjectCSV);
@@ -358,7 +385,8 @@ const run = async () => {
         + passRatePerProjectCSV + "\n"
         + passRatePerDeveloperCSV + "\n"
         + defectsFoundPerQACSV + "\n"
-        + cancelledDefectsPerQACSV;
+        + cancelledDefectsPerQACSV + "\n"
+        + executionTimeByTestCSV;
     await save(config.outputDir + "general-report.csv", generalCSV);
 };
 
