@@ -269,7 +269,7 @@ const cancelledDefectsPerQA = (easierTests, period) => {
     return result.join('\n');
 };
 
-const qualityRankPerProject = (issues, period) => {
+const defectsRankPerProject = (issues, period) => {
     let result = [];
     let obj = {};
     for(let i = 0; i < issues.length; i ++ ) {
@@ -297,7 +297,7 @@ const qualityRankPerProject = (issues, period) => {
     }
     return result.join('\n');
 };
-const qualityRankPerDeveloper = (issues, period) => {
+const defectsRankPerDeveloper = (issues, period) => {
     let result = [];
     let obj = {};
     for(let i = 0; i < issues.length; i ++ ) {
@@ -369,8 +369,8 @@ const run = async () => {
     let period = config.dates.start + " - " + config.dates.end;
     let easierTests = await jiraLib.loadEasierTests(config);
     let testedScreens = await jiraLib.loadEasierStoriesMovedFromQAtoValidation(config);
-    let qualityRankPerProjectCSV = qualityRankPerProject(testedScreens, period);
-    let qualityRankPerDeveloperCSV = qualityRankPerDeveloper(testedScreens, period);
+    let defectsRankPerProjectCSV = defectsRankPerProject(testedScreens, period);
+    let defectsRankPerDeveloperCSV = defectsRankPerDeveloper(testedScreens, period);
     let rawDataCSV = rawData(easierTests, period);
     let defectsPerProjectCSV = defectsPerProject(easierTests, period);
     let defectsPerDeveloperCSV = defectsPerDeveloper(easierTests, period);
@@ -399,8 +399,8 @@ const run = async () => {
     await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
 
     await save(config.outputDir + "raw-data.csv", rawDataCSV);
-    await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProjectCSV);
-    await save(config.outputDir + "developers-quality-rank.csv", qualityRankPerDeveloperCSV);
+    await save(config.outputDir + "project-quality-rank.csv", defectsRankPerProjectCSV);
+    await save(config.outputDir + "developers-quality-rank.csv", defectsRankPerDeveloperCSV);
     await save(config.outputDir + "defects-per-project.csv", defectsPerProjectCSV);
     await save(config.outputDir + "defects-per-developer.csv", defectsPerDeveloperCSV);
     await save(config.outputDir + "pass-rate-per-project.csv", passRatePerProjectCSV);
@@ -409,8 +409,8 @@ const run = async () => {
     await save(config.outputDir + "cancelled-defects-per-qa.csv", cancelledDefectsPerQACSV);
 
     let generalCSV = rawDataCSV + "\n"
-        + qualityRankPerProjectCSV + "\n"
-        + qualityRankPerDeveloperCSV + "\n"
+        + defectsRankPerProjectCSV + "\n"
+        + defectsRankPerDeveloperCSV + "\n"
         + defectsPerProjectCSV + "\n"
         + defectsPerDeveloperCSV + "\n"
         + passRatePerProjectCSV + "\n"
