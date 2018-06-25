@@ -2,6 +2,7 @@ const format = require('string-format');
 const makeDir = require('make-dir');
 const jiraLib = require('./lib/jiralib');
 const writeFile = require('write');
+const moment = require('moment');
 
 let config = {
     host: "jira.devfactory.com",
@@ -334,10 +335,30 @@ const executionTimeByTest = (expandedTests) => {
         let endDate = Date.parse(test.closedDateTime);
         let executionTime = Math.floor((endDate - startDate) / 60000);
         let obj = {
+            assignee: test.assignee,
             key : makeLink(test.key),
             time : executionTime
         };
-        result.push(format("{key};{time};", obj));
+        result.push(format("{assignee};{key};{time};", obj));
+    }
+    return result.join('\n');
+};
+
+const livingInQATimeByScreen = (expandedScreens) => {
+    let result = [];
+    result.push("Assignee;Screen;Moved to QA;Living in QA (hrs);");
+    for(let i = 0; i < expandedScreens.length; i ++ ) {
+        let screen = expandedScreens[i];
+        let startDate = Date.parse(screen.inEasierQADateTime);
+        let endDate = new Date();
+        let executionTime = Math.floor((endDate - startDate) / 60000 / 60);
+        let obj = {
+            assignee: screen.assignee,
+            key : makeLink(screen.key),
+            movedDate: moment(screen.inEasierQADateTime).format("DD.MM.YYYY HH:MM"),
+            time : executionTime
+        };
+        result.push(format("{assignee};{key};{movedDate};{time};", obj));
     }
     return result.join('\n');
 };
@@ -365,7 +386,17 @@ const run = async () => {
     }
     let expandedIssues = await jiraLib.loadIssues(ids);
     let executionTimeByTestCSV = executionTimeByTest(expandedIssues);
-    await save(config.outputDir + "execution-time-by-test.csv", executionTimeByTestCSV);
+    await save(config.outputDir + "execution-time-by-test-all-CIS.csv", executionTimeByTestCSV);
+
+    //Warning: slow also
+    let screensInQA = await jiraLib.loadEasierStoriesInQANow(config);
+    ids = [];
+    for(let i = 0; i < screensInQA.length; i++){
+        ids.push(screensInQA[i].id);
+    }
+    let expandedScreens =  await jiraLib.loadIssues(ids);
+    let livingInQATimeByScreenCSV = livingInQATimeByScreen(expandedScreens);
+    await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
 
     await save(config.outputDir + "raw-data.csv", rawDataCSV);
     await save(config.outputDir + "project-quality-rank.csv", qualityRankPerProjectCSV);
@@ -386,7 +417,8 @@ const run = async () => {
         + passRatePerDeveloperCSV + "\n"
         + defectsFoundPerQACSV + "\n"
         + cancelledDefectsPerQACSV + "\n"
-        + executionTimeByTestCSV;
+        + executionTimeByTestCSV + "\n"
+        + livingInQATimeByScreenCSV;
     await save(config.outputDir + "general-report.csv", generalCSV);
 };
 
