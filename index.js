@@ -197,7 +197,7 @@ const passRatePerDeveloper = (easierTests, period) => {
         }
     }
     let keys = Object.keys(obj);
-    result.push("Period;Project name;Sent to QA;Passed;First time passed;");
+    result.push("Period;Developer name;Sent to QA;Passed;First time passed;");
     for(let i = 0; i < keys.length; i++){
         let lineObj = {};
         lineObj.period = period;
@@ -328,7 +328,7 @@ const qualityRankPerDeveloper = (issues, period) => {
 
 const executionTimeByTest = (expandedTests) => {
     let result = [];
-    result.push("Test;Execution time (min);");
+    result.push("QA name;Test;Execution time (min);");
     for(let i = 0; i < expandedTests.length; i ++ ) {
         let test = expandedTests[i];
         let startDate = Date.parse(test.acceptedDateTime);
