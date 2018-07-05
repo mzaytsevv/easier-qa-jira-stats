@@ -10,10 +10,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-06-18 00:00",
-        end : "2018-06-24 23:59"
+        start : "2018-07-02 00:00",
+        end : "2018-07-08 23:59"
     },
-    outputDir : "output/Jun 18 - Jun 24/"
+    outputDir : "output/Jun 02 - Jul 08/"
 };
 
 const mkdir = async (name) => {
@@ -346,7 +346,7 @@ const executionTimeByTest = (expandedTests) => {
 
 const livingInQATimeByScreen = (expandedScreens) => {
     let result = [];
-    result.push("Assignee;Screen;Moved to QA;Living in QA (hrs);");
+    result.push("Assignee;Screen;Moved to QA;Living in QA (hrs);Living in QA (d);Is Accepted;");
     for(let i = 0; i < expandedScreens.length; i ++ ) {
         let screen = expandedScreens[i];
         let startDate = Date.parse(screen.inEasierQADateTime);
@@ -356,9 +356,18 @@ const livingInQATimeByScreen = (expandedScreens) => {
             assignee: screen.assignee,
             key : makeLink(screen.key),
             movedDate: moment(screen.inEasierQADateTime).format("DD.MM.YYYY HH:MM"),
-            time : executionTime
+            time : executionTime,
+            days: executionTime / 24,
+            isAccepted: false,
+            acceptedBy : ''
         };
-        result.push(format("{assignee};{key};{movedDate};{time};", obj));
+        for(let i = 0; i < screen.easierTests.length; i++){
+            let easierTest = screen.easierTests[i];
+            if(easierTest.type === "Easier Test" && easierTest.status === "Accepted"){
+                obj.isAccepted = true;
+            }
+        }
+        result.push(format("{assignee};{key};{movedDate};{time};{days};{isAccepted}", obj));
     }
     return result.join('\n');
 };
@@ -380,17 +389,17 @@ const run = async () => {
     let cancelledDefectsPerQACSV = cancelledDefectsPerQA(easierTests, period);
 
     // Warning: slow
-    let ids = [];
-    for(let i = 0; i < easierTests.length; i++){
-        ids.push(easierTests[i].id);
-    }
-    let expandedIssues = await jiraLib.loadIssues(ids);
-    let executionTimeByTestCSV = executionTimeByTest(expandedIssues);
-    await save(config.outputDir + "execution-time-by-test-all-CIS.csv", executionTimeByTestCSV);
+    // let ids = [];
+    // for(let i = 0; i < easierTests.length; i++){
+    //     ids.push(easierTests[i].id);
+    // }
+    // let expandedIssues = await jiraLib.loadIssues(ids);
+    // let executionTimeByTestCSV = executionTimeByTest(expandedIssues);
+    // await save(config.outputDir + "execution-time-by-test-all-CIS.csv", executionTimeByTestCSV);
 
     //Warning: slow also
     let screensInQA = await jiraLib.loadEasierStoriesInQANow(config);
-    ids = [];
+    let ids = [];
     for(let i = 0; i < screensInQA.length; i++){
         ids.push(screensInQA[i].id);
     }
@@ -417,7 +426,7 @@ const run = async () => {
         + passRatePerDeveloperCSV + "\n"
         + defectsFoundPerQACSV + "\n"
         + cancelledDefectsPerQACSV + "\n"
-        + executionTimeByTestCSV + "\n"
+        // + executionTimeByTestCSV + "\n"
         + livingInQATimeByScreenCSV;
     await save(config.outputDir + "general-report.csv", generalCSV);
 };
