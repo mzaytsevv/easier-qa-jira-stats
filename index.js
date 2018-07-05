@@ -10,10 +10,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-07-02 00:00",
-        end : "2018-07-08 23:59"
+        start : "2018-06-25 00:00",
+        end : "2018-07-01 23:59"
     },
-    outputDir : "output/Jun 02 - Jul 08/"
+    outputDir : "output/Jun 25 - Jul 01/"
 };
 
 const mkdir = async (name) => {
@@ -76,9 +76,9 @@ const defectsPerProject = (easierTests, period) => {
                     obj[relatedProject] = {};
                 }
                 if(obj[relatedProject].defectsCounter){
-                    obj[relatedProject].defectsCounter += easierTest.defects.length;
+                    obj[relatedProject].defectsCounter += countNotCancelled(easierTest.defects);
                 } else {
-                    obj[relatedProject].defectsCounter  = easierTest.defects.length;
+                    obj[relatedProject].defectsCounter  = countNotCancelled(easierTest.defects);
                 }
             }
         }
@@ -110,7 +110,7 @@ const defectsPerDeveloper = (easierTests, period) => {
                     };
                 }
                 obj[developer].sentToQA ++;
-                obj[developer].defectsCounter += easierTest.defects.length;
+                obj[developer].defectsCounter += countNotCancelled(easierTest.defects);
             }
         }
     }
@@ -283,7 +283,7 @@ const defectsRankPerProject = (issues, period) => {
             };
         }
         obj[project].tasks ++;
-        obj[project].defects += issue.defects.length;
+        obj[project].defects += countNotCancelled(issue.defects);
         obj[project].rate = (obj[project].defects / obj[project].tasks).toFixed(2);
     }
     let keys = Object.keys(obj);
@@ -311,7 +311,7 @@ const defectsRankPerDeveloper = (issues, period) => {
             };
         }
         obj[developer].tasks ++;
-        obj[developer].defects += issue.defects.length;
+        obj[developer].defects += countNotCancelled(issue.defects);
         obj[developer].rate = (obj[developer].defects / obj[developer].tasks).toFixed(2);
     }
     let keys = Object.keys(obj);
@@ -370,6 +370,17 @@ const livingInQATimeByScreen = (expandedScreens) => {
         result.push(format("{assignee};{key};{movedDate};{time};{days};{isAccepted}", obj));
     }
     return result.join('\n');
+};
+
+const countNotCancelled = (defects) => {
+  let counter = 0;
+  for(let i = 0; i < defects.length; i++){
+      let defect = defects[i];
+      if(defect.status !== "Cancelled"){
+          counter ++;
+      }
+  }
+  return counter;
 };
 
 const run = async () => {
