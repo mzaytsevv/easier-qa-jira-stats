@@ -3,6 +3,7 @@ const makeDir = require('make-dir');
 const jiraLib = require('./lib/jiralib');
 const writeFile = require('write');
 const moment = require('moment');
+const excludedDefects = require('./aescis');
 
 let config = {
     host: "jira.devfactory.com",
@@ -10,10 +11,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-06-25 00:00",
-        end : "2018-07-01 23:59"
+        start : "2018-07-09 00:00",
+        end : "2018-07-15 23:59"
     },
-    outputDir : "output/Jun 25 - Jul 01/"
+    outputDir : "output/Jul 9 - Jul 15/"
 };
 
 const mkdir = async (name) => {
@@ -76,9 +77,9 @@ const defectsPerProject = (easierTests, period) => {
                     obj[relatedProject] = {};
                 }
                 if(obj[relatedProject].defectsCounter){
-                    obj[relatedProject].defectsCounter += countNotCancelled(easierTest.defects);
+                    obj[relatedProject].defectsCounter += getNotExcluded(getNotCancelled(easierTest.defects)).length;
                 } else {
-                    obj[relatedProject].defectsCounter  = countNotCancelled(easierTest.defects);
+                    obj[relatedProject].defectsCounter  = getNotExcluded(getNotCancelled(easierTest.defects)).length;
                 }
             }
         }
@@ -110,7 +111,7 @@ const defectsPerDeveloper = (easierTests, period) => {
                     };
                 }
                 obj[developer].sentToQA ++;
-                obj[developer].defectsCounter += countNotCancelled(easierTest.defects);
+                obj[developer].defectsCounter += getNotExcluded(getNotCancelled(easierTest.defects)).length;
             }
         }
     }
@@ -283,7 +284,7 @@ const defectsRankPerProject = (issues, period) => {
             };
         }
         obj[project].tasks ++;
-        obj[project].defects += countNotCancelled(issue.defects);
+        obj[project].defects += getNotExcluded(getNotCancelled(issue.defects)).length;
         obj[project].rate = (obj[project].defects / obj[project].tasks).toFixed(2);
     }
     let keys = Object.keys(obj);
@@ -311,7 +312,7 @@ const defectsRankPerDeveloper = (issues, period) => {
             };
         }
         obj[developer].tasks ++;
-        obj[developer].defects += countNotCancelled(issue.defects);
+        obj[developer].defects += getNotExcluded(getNotCancelled(issue.defects)).length;
         obj[developer].rate = (obj[developer].defects / obj[developer].tasks).toFixed(2);
     }
     let keys = Object.keys(obj);
@@ -372,15 +373,47 @@ const livingInQATimeByScreen = (expandedScreens) => {
     return result.join('\n');
 };
 
-const countNotCancelled = (defects) => {
-  let counter = 0;
+const getNotCancelled = (defects) => {
+  let result = [];
   for(let i = 0; i < defects.length; i++){
       let defect = defects[i];
       if(defect.status !== "Cancelled"){
-          counter ++;
+          result.push(defect);
       }
   }
-  return counter;
+  return result;
+};
+const getNotExcluded = (defects) => {
+    let result = [];
+    for(let i = 0; i < defects.length; i++){
+        let defect = defects[i];
+        let isExcluded = false;
+        for(let j = 0; j < excludedDefects.length; j++){
+            let excludedDefect = excludedDefects[j];
+            if(defect.key === excludedDefect){
+                isExcluded = true;
+                break;
+            }
+        }
+        if(!isExcluded){
+            result.push(defect);
+        }
+    }
+    return result;
+};
+
+const hasTestCasesWrittenByScreen = (expandedScreens) => {
+    let result = [];
+    result.push("Screen;Has test cases;");
+    for(let i = 0; i < expandedScreens.length; i ++ ) {
+        let screen = expandedScreens[i];
+        let obj = {
+            key : makeLink(screen.key),
+            hasTestCases : screen.hasTestCases
+        };
+        result.push(format("{key};{hasTestCases};", obj));
+    }
+    return result.join('\n');
 };
 
 const run = async () => {
@@ -409,7 +442,7 @@ const run = async () => {
     // await save(config.outputDir + "execution-time-by-test-all-CIS.csv", executionTimeByTestCSV);
 
     //Warning: slow also
-    let screensInQA = await jiraLib.loadEasierStoriesInQANow(config);
+    let screensInQA = await jiraLib.loadEasierStoriesInQANow(config, "In Easier QA");
     let ids = [];
     for(let i = 0; i < screensInQA.length; i++){
         ids.push(screensInQA[i].id);
@@ -417,6 +450,16 @@ const run = async () => {
     let expandedScreens =  await jiraLib.loadIssues(ids);
     let livingInQATimeByScreenCSV = livingInQATimeByScreen(expandedScreens);
     await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
+
+    // Warning: slow also
+    let screensInDevelopment = await jiraLib.loadEasierStoriesInQANow(config, "In Development");
+    ids = [];
+    for(let i = 0; i < screensInDevelopment.length; i++){
+        ids.push(screensInDevelopment[i].id);
+    }
+    expandedScreens =  await jiraLib.loadIssues(ids);
+    let hasTestCasesWrittenByScreenCSV = hasTestCasesWrittenByScreen(expandedScreens);
+    await save(config.outputDir + "has-test-cases-by-screen.csv", hasTestCasesWrittenByScreenCSV);
 
     await save(config.outputDir + "raw-data.csv", rawDataCSV);
     await save(config.outputDir + "project-quality-rank.csv", defectsRankPerProjectCSV);
@@ -438,7 +481,8 @@ const run = async () => {
         + defectsFoundPerQACSV + "\n"
         + cancelledDefectsPerQACSV + "\n"
         // + executionTimeByTestCSV + "\n"
-        + livingInQATimeByScreenCSV;
+        + livingInQATimeByScreenCSV + "\n"
+        + hasTestCasesWrittenByScreenCSV;
     await save(config.outputDir + "general-report.csv", generalCSV);
 };
 
