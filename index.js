@@ -11,10 +11,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-07-09 00:00",
-        end : "2018-07-15 23:59"
+        start : "2018-07-23 00:00",
+        end : "2018-07-29 23:59"
     },
-    outputDir : "output/Jul 9 - Jul 15/"
+    outputDir : "output/Jul 23 - Jul 29/"
 };
 
 const mkdir = async (name) => {
@@ -327,6 +327,48 @@ const defectsRankPerDeveloper = (issues, period) => {
     return result.join('\n');
 };
 
+const defectsPerPlatform = (issues, period) => {
+    let result = [];
+    let obj = {};
+    for(let k = 0; k < issues.length; k++){
+        let issue = issues[k];
+        for(let i = 0; i < issue.defects.length; i ++ ) {
+            let defect = issue.defects[i];
+            if(defect.platforms){
+                for(let j = 0; j < defect.platforms.length; j++){
+                    let platform = defect.platforms[j];
+                    if(!obj[platform]){
+                        obj[platform] = {
+                            name : platform,
+                            defects : [],
+                            defectsNumber : 0
+                        };
+                    }
+                    obj[platform].defectsNumber ++;
+                    obj[platform].defects.push(defect);
+                }
+            }
+        }
+    }
+    let keys = Object.keys(obj);
+    result.push("Period;Platform name;Defects number; Defects list");
+    for(let i = 0; i < keys.length; i++) {
+        let lineObj = {};
+        lineObj.period = period;
+        lineObj.platform = keys[i];
+        lineObj.defectsNumber = obj[keys[i]].defectsNumber;
+        lineObj.defects = [];
+        for(let j = 0; j < obj[keys[i]].defects.length; j++){
+            let defectName = obj[keys[i]].defects[j].key;
+            lineObj.defects.push(defectName);
+        }
+        lineObj.defects = lineObj.defects.join(" ");
+        result.push(format("{period};{platform};{defectsNumber};{defects};", lineObj));
+    }
+    return result.join('\n');
+};
+
+
 const executionTimeByTest = (expandedTests) => {
     let result = [];
     result.push("QA name;Test;Execution time (min);");
@@ -416,12 +458,37 @@ const hasTestCasesWrittenByScreen = (expandedScreens) => {
     return result.join('\n');
 };
 
+const avgTestsNumberPerScreen = (testedScreens, period) => {
+  let result = [];
+  let testsNumbers = [];
+  for(let i = 0; i < testedScreens.length; i++){
+      let testedScreen = testedScreens[i];
+      if(testedScreen.easierTests){
+          testsNumbers.push(testedScreen.easierTests.length)
+      }
+  }
+  let avg = 0;
+  for(let i = 0; i < testsNumbers.length; i++){
+      avg += testsNumbers[i];
+  }
+  avg = avg / testsNumbers.length;
+  let obj = {
+      period : period,
+      avgTime: avg
+  };
+  result.push("Period;AVG tests per screen;");
+  result.push(format("{period};{avgTime};", obj));
+  return result.join('\n');
+};
+
 const run = async () => {
     await jiraLib.init(config);
     await mkdir(config.outputDir);
     let period = config.dates.start + " - " + config.dates.end;
     let easierTests = await jiraLib.loadEasierTests(config);
+    let defectsPerPlatformCSV = defectsPerPlatform(easierTests, period);
     let testedScreens = await jiraLib.loadEasierStoriesMovedFromQAtoValidation(config);
+    let avgTestsNumberPerScreenCSV = avgTestsNumberPerScreen(testedScreens, period);
     let defectsRankPerProjectCSV = defectsRankPerProject(testedScreens, period);
     let defectsRankPerDeveloperCSV = defectsRankPerDeveloper(testedScreens, period);
     let rawDataCSV = rawData(easierTests, period);
@@ -470,10 +537,13 @@ const run = async () => {
     await save(config.outputDir + "pass-rate-per-developer.csv", passRatePerDeveloperCSV);
     await save(config.outputDir + "defects-found-per-qa.csv", defectsFoundPerQACSV);
     await save(config.outputDir + "cancelled-defects-per-qa.csv", cancelledDefectsPerQACSV);
+    await save(config.outputDir + "avg-tests-number-per-screen.csv", avgTestsNumberPerScreenCSV);
+    await save(config.outputDir + "defects-per-platform.csv", defectsPerPlatformCSV);
 
     let generalCSV = rawDataCSV + "\n"
         + defectsRankPerProjectCSV + "\n"
         + defectsRankPerDeveloperCSV + "\n"
+        + defectsPerPlatformCSV + "\n"
         + defectsPerProjectCSV + "\n"
         + defectsPerDeveloperCSV + "\n"
         + passRatePerProjectCSV + "\n"
@@ -481,6 +551,7 @@ const run = async () => {
         + defectsFoundPerQACSV + "\n"
         + cancelledDefectsPerQACSV + "\n"
         // + executionTimeByTestCSV + "\n"
+        + avgTestsNumberPerScreenCSV + "\n"
         + livingInQATimeByScreenCSV + "\n"
         + hasTestCasesWrittenByScreenCSV;
     await save(config.outputDir + "general-report.csv", generalCSV);
