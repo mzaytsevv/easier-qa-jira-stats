@@ -11,10 +11,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-07-23 00:00",
-        end : "2018-07-29 23:59"
+        start : "2018-07-30 00:00",
+        end : "2018-08-05 23:59"
     },
-    outputDir : "output/Jul 23 - Jul 29/"
+    outputDir : "output/Jul 30 - Aug 05/"
 };
 
 const mkdir = async (name) => {
@@ -509,7 +509,7 @@ const run = async () => {
     // await save(config.outputDir + "execution-time-by-test-all-CIS.csv", executionTimeByTestCSV);
 
     //Warning: slow also
-    let screensInQA = await jiraLib.loadEasierStoriesInQANow(config, "In Easier QA");
+    let screensInQA = await jiraLib.loadEasierStoriesInStatus(config, "In Easier QA");
     let ids = [];
     for(let i = 0; i < screensInQA.length; i++){
         ids.push(screensInQA[i].id);
@@ -519,7 +519,7 @@ const run = async () => {
     await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
 
     // Warning: slow also
-    let screensInDevelopment = await jiraLib.loadEasierStoriesInQANow(config, "In Development");
+    let screensInDevelopment = await jiraLib.loadEasierStoriesInStatus(config, "In Development");
     ids = [];
     for(let i = 0; i < screensInDevelopment.length; i++){
         ids.push(screensInDevelopment[i].id);
