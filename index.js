@@ -11,10 +11,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-07-30 00:00",
-        end : "2018-08-05 23:59"
+        start : "2018-08-06 00:00",
+        end : "2018-08-12 23:59"
     },
-    outputDir : "output/Jul 30 - Aug 05/"
+    outputDir : "output/Aug 06 - Aug 12/"
 };
 
 const mkdir = async (name) => {
@@ -446,14 +446,29 @@ const getNotExcluded = (defects) => {
 
 const hasTestCasesWrittenByScreen = (expandedScreens) => {
     let result = [];
-    result.push("Screen;Has test cases;");
+    result.push("Screen;Developer;Hours in development;Days in development;Has test cases;Sprint;");
     for(let i = 0; i < expandedScreens.length; i ++ ) {
         let screen = expandedScreens[i];
+        let hasTestCases = false;
+        let startDate = Date.parse(screen.inDevelopmentDateTime);
+        let endDate = new Date();
+        let hoursInDevelopment = Math.floor((endDate - startDate) / 60000 / 60);
+        let daysInDevelopment = hoursInDevelopment / 24;
+        for(let j = 0; j < screen.easierTestWritingTasks.length; j++){
+            let easierTestWritingTask = screen.easierTestWritingTasks[j];
+            if(easierTestWritingTask.status === "Closed"){
+                hasTestCases = true;
+            }
+        }
         let obj = {
             key : makeLink(screen.key),
-            hasTestCases : screen.hasTestCases
+            hoursInDevelopment : hoursInDevelopment,
+            daysInDevelopment : daysInDevelopment,
+            hasTestCases : hasTestCases,
+            assignee : screen.assignee,
+            sprint : screen.sprint
         };
-        result.push(format("{key};{hasTestCases};", obj));
+        result.push(format("{key};{assignee};{hoursInDevelopment};{daysInDevelopment};{hasTestCases};{sprint};", obj));
     }
     return result.join('\n');
 };
@@ -519,12 +534,12 @@ const run = async () => {
     await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
 
     // Warning: slow also
-    let screensInDevelopment = await jiraLib.loadEasierStoriesInStatus(config, "In Development");
+    screensInDevelopment = await jiraLib.loadEasierStoriesInStatus(config, "In Development");
     ids = [];
     for(let i = 0; i < screensInDevelopment.length; i++){
         ids.push(screensInDevelopment[i].id);
     }
-    expandedScreens =  await jiraLib.loadIssues(ids);
+    let expandedScreens =  await jiraLib.loadIssues(ids);
     let hasTestCasesWrittenByScreenCSV = hasTestCasesWrittenByScreen(expandedScreens);
     await save(config.outputDir + "has-test-cases-by-screen.csv", hasTestCasesWrittenByScreenCSV);
 
