@@ -534,12 +534,12 @@ const run = async () => {
     await save(config.outputDir + "living-in-qa-time-by-screen.csv", livingInQATimeByScreenCSV);
 
     // Warning: slow also
-    screensInDevelopment = await jiraLib.loadEasierStoriesInStatus(config, "In Development");
+    let screensInDevelopment = await jiraLib.loadEasierStoriesInStatus(config, "In Development");
     ids = [];
     for(let i = 0; i < screensInDevelopment.length; i++){
         ids.push(screensInDevelopment[i].id);
     }
-    let expandedScreens =  await jiraLib.loadIssues(ids);
+    expandedScreens =  await jiraLib.loadIssues(ids);
     let hasTestCasesWrittenByScreenCSV = hasTestCasesWrittenByScreen(expandedScreens);
     await save(config.outputDir + "has-test-cases-by-screen.csv", hasTestCasesWrittenByScreenCSV);
 
