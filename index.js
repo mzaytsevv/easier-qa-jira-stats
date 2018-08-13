@@ -11,10 +11,10 @@ let config = {
     user: "mzaytsev",
     password: process.env.JIRA_PASS,
     dates : {
-        start : "2018-08-06 00:00",
-        end : "2018-08-12 23:59"
+        start : "2018-08-13 00:00",
+        end : "2018-08-19 23:59"
     },
-    outputDir : "output/Aug 06 - Aug 12/"
+    outputDir : "output/Aug 13 - Aug 19/"
 };
 
 const mkdir = async (name) => {
